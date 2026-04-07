@@ -215,16 +215,32 @@ def generate_transaction(complaint_id: str, account_state: str | None = None) ->
         pin_verified = False
         card_network = None
 
-    # Out of state: 15% chance, computed against account_state if provided
-    is_out_of_state = rng.random() < 0.15
+    # ─── Determinism fix ──────────────────────────────────────────────
+    # Always consume the SAME number of RNG calls regardless of whether
+    # account_state is provided. Otherwise the RNG state diverges and
+    # subsequent calls (days_ago, txn_id_suffix) produce different values
+    # for the same complaint_id depending on whether account_id was passed.
+    is_out_of_state_roll = rng.random() < 0.15
+    random_merchant_state = rng.choice(US_STATES)
+
     if account_state:
-        if is_out_of_state:
-            other_states = [s for s in US_STATES if s != account_state]
-            merchant_state = rng.choice(other_states)
+        if is_out_of_state_roll:
+            # Consumer's account is in account_state, but the transaction
+            # happened elsewhere — pick a different state.
+            if random_merchant_state != account_state:
+                merchant_state = random_merchant_state
+            else:
+                # Random pick collided with account_state — deterministically
+                # pick the next state in the list instead.
+                idx = (US_STATES.index(account_state) + 1) % len(US_STATES)
+                merchant_state = US_STATES[idx]
+            is_out_of_state = True
         else:
             merchant_state = account_state
+            is_out_of_state = False
     else:
-        merchant_state = rng.choice(US_STATES)
+        merchant_state = random_merchant_state
+        is_out_of_state = is_out_of_state_roll
 
     # Transaction date: 1-14 days before today
     days_ago = rng.randint(1, 14)

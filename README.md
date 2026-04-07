@@ -4,6 +4,10 @@ Mock data source endpoints for the DisputeOS workflow POC. The MightyBot platfor
 
 **All endpoints are deterministic** — the same ID always returns the same data (hash-seeded random generation). No storage required, no database, no state.
 
+> 📖 **Looking for full API documentation?** See **[API_DOCS.md](./API_DOCS.md)** for complete endpoint reference, field descriptions, generation logic, distributions, workflow wizard configuration, and testing recipes. Or visit the **[live interactive Swagger docs](https://disputeos-mock-api.onrender.com/docs)**.
+
+**Live deployment**: https://disputeos-mock-api.onrender.com
+
 ---
 
 ## Why This Exists
