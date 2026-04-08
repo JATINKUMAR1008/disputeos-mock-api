@@ -1,10 +1,12 @@
-# DisputeOS Mock API
+# DisputeOS API
 
-Mock data source endpoints for the DisputeOS workflow POC. The MightyBot platform's `data_source_calls` step hits these endpoints during workflow runs to enrich dispute records with account, transaction, and calendar data.
+Two responsibilities in one FastAPI service:
 
-**All endpoints are deterministic** — the same ID always returns the same data (hash-seeded random generation). No storage required, no database, no state.
+1. **Dispute state store** — stateful JSON-file-backed store of dispute records keyed by `dispute_id`. Tracks the full timeline (gate statuses, compliance clock state, computed deadlines, investigation status). Called by the consumer intake form, the workflow's `agent_remediation` step, and the analyst dashboard view.
 
-> 📖 **Looking for full API documentation?** See **[API_DOCS.md](./API_DOCS.md)** for complete endpoint reference, field descriptions, generation logic, distributions, workflow wizard configuration, and testing recipes. Or visit the **[live interactive Swagger docs](https://disputeos-mock-api.onrender.com/docs)**.
+2. **Mock data sources** — deterministic synthetic account, transaction, and holiday-calendar data, generated from hash-seeded IDs. Used by the workflow's `data_source_calls` step for enrichment. These endpoints are stateless — the same ID always returns the same data.
+
+> 📖 **Looking for full API documentation?** See **[API_DOCS.md](./API_DOCS.md)** or visit the **[live interactive Swagger docs](https://disputeos-mock-api.onrender.com/docs)**.
 
 **Live deployment**: https://disputeos-mock-api.onrender.com
 
@@ -57,6 +59,79 @@ open http://localhost:8888/docs
 ---
 
 ## Endpoints
+
+### Dispute State Store (new in v2.0)
+
+Stateful endpoints that store dispute records keyed by `dispute_id`. Data is persisted to a JSON file (`/tmp/disputeos_state.json` by default, override with `DISPUTE_STORE_PATH` env var).
+
+#### `POST /api/disputes`
+Create a new dispute with initial timeline state. The server initializes gate statuses, investigation status, and clock state to their default pending values. Returns 409 if the dispute_id already exists.
+
+```bash
+curl -X POST https://disputeos-mock-api.onrender.com/api/disputes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dispute_id": "DSP-2026-04-08-0001",
+    "account_id": "ACC-884821",
+    "consumer_name": "Maria Chen",
+    "intake_date": "2026-04-08",
+    "intake_channel": "web",
+    "dispute_type": "unauthorized",
+    "transaction_date": "2026-04-03",
+    "transaction_amount": 2340.00,
+    "transaction_type": "atm",
+    "merchant_name": "ATM #9284",
+    "consumer_narrative": "Someone used my card..."
+  }'
+```
+
+Initial state on creation:
+```json
+{
+  "investigation_status": "not_started",
+  "gate_1_status": "pending",
+  "gate_2_status": "pending",
+  "compliance_clock_state": "on_track",
+  "provisional_credit_issued": false,
+  "clock_variant": null,
+  "investigation_deadline": null,
+  ...
+}
+```
+
+#### `GET /api/disputes`
+List all disputes. Returns an array of full dispute records.
+
+#### `GET /api/disputes/{dispute_id}`
+Return the full state of a single dispute. 404 if not found.
+
+#### `PATCH /api/disputes/{dispute_id}`
+Shallow-merge a partial update into an existing dispute. Called by the workflow's `agent_remediation` step after each run to persist the computed timeline state.
+
+```bash
+curl -X PATCH https://disputeos-mock-api.onrender.com/api/disputes/DSP-2026-04-08-0001 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "clock_variant": "standard_45",
+    "investigation_deadline": "2026-04-22",
+    "provisional_credit_deadline": "2026-04-22",
+    "extended_deadline": "2026-05-23",
+    "gate_1_status": "pending",
+    "compliance_clock_state": "on_track",
+    "last_run_id": "e80a12b3-cd7c-44a1-b3a9-574df52bba7d"
+  }'
+```
+
+Fields with value `null` are **not applied** (treated as "unset" rather than "set to null"). Only non-null fields are merged into the existing record.
+
+#### `DELETE /api/disputes/{dispute_id}`
+Remove a dispute from the store. Returns 204 on success, 404 if not found.
+
+---
+
+### Mock Data Sources (unchanged from v1.0)
+
+Stateless endpoints that generate deterministic synthetic data from hash-seeded IDs.
 
 ### `GET /api/mock/accounts/{account_id}`
 
@@ -220,14 +295,24 @@ For deployment to a Kubernetes cluster, replace `localhost:8888` with the in-clu
 
 ```
 disputeos-mock-api/
-├── main.py              # FastAPI app — 3 endpoints
-├── generators.py        # Deterministic data generators (hash-seeded)
+├── main.py              # FastAPI app — state endpoints + mock data sources
+├── store.py             # JSON-file-backed dispute state store
+├── models.py            # Pydantic request/response models + initial state
+├── generators.py        # Deterministic synthetic data generators (hash-seeded)
 ├── requirements.txt     # fastapi + uvicorn
 ├── Dockerfile           # Container image
 ├── docker-compose.yml   # One-command local startup
+├── openapi.json         # OpenAPI 3.1 spec (auto-generated)
+├── API_DOCS.md          # Full endpoint reference
 ├── .gitignore
 └── README.md            # This file
 ```
+
+## ⚠️ Persistence Note (Render Free Tier)
+
+The dispute state store uses a JSON file at `/tmp/disputeos_state.json` by default. On Render's free tier, the container's filesystem is **ephemeral** — when the container restarts (after ~15 min of inactivity or on a new deploy), the state is wiped.
+
+For a POC this is acceptable since demos happen within a single session. For persistence across restarts, set `DISPUTE_STORE_PATH` to a Render persistent disk mount, or swap the `DisputeStore` class in `store.py` for a Postgres-backed implementation (Neon/Supabase free tier both work).
 
 ---
 
