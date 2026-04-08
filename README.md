@@ -2,7 +2,7 @@
 
 Two responsibilities in one FastAPI service:
 
-1. **Dispute state store** — stateful JSON-file-backed store of dispute records keyed by `dispute_id`. Tracks the full timeline (gate statuses, compliance clock state, computed deadlines, investigation status). Called by the consumer intake form, the workflow's `agent_remediation` step, and the analyst dashboard view.
+1. **Dispute state store** — stateful Postgres-backed store of dispute records keyed by `dispute_id`. Tracks the full timeline (gate statuses, compliance clock state, computed deadlines, investigation status). Called by the consumer intake form, the workflow's `agent_remediation` step, and the analyst dashboard view. Backed by Supabase Postgres via SQLAlchemy; schema managed with Alembic.
 
 2. **Mock data sources** — deterministic synthetic account, transaction, and holiday-calendar data, generated from hash-seeded IDs. Used by the workflow's `data_source_calls` step for enrichment. These endpoints are stateless — the same ID always returns the same data.
 
@@ -33,6 +33,14 @@ cd /Users/jatinkumar/Code/disputeos-mock-api
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+
+# One-time setup: copy the env template and fill in your Supabase URLs
+cp .env.example .env
+$EDITOR .env
+
+# Apply migrations (creates the 4 enum types + the `disputes` table)
+alembic upgrade head
+
 uvicorn main:app --reload --port 8888
 ```
 
@@ -40,8 +48,12 @@ uvicorn main:app --reload --port 8888
 
 ```bash
 cd /Users/jatinkumar/Code/disputeos-mock-api
+# Make sure .env exists with DATABASE_URL and DIRECT_DATABASE_URL set
 docker compose up
 ```
+
+The container runs `alembic upgrade head` on startup before starting
+uvicorn, so a fresh database is migrated automatically.
 
 ### Verify
 
@@ -60,9 +72,9 @@ open http://localhost:8888/docs
 
 ## Endpoints
 
-### Dispute State Store (new in v2.0)
+### Dispute State Store
 
-Stateful endpoints that store dispute records keyed by `dispute_id`. Data is persisted to a JSON file (`/tmp/disputeos_state.json` by default, override with `DISPUTE_STORE_PATH` env var).
+Stateful endpoints that store dispute records keyed by `dispute_id`. Data is persisted to a Postgres database (Supabase in production). The connection URL is read from the `DATABASE_URL` environment variable — see `.env.example` for the expected format.
 
 #### `POST /api/disputes`
 Create a new dispute. The body is just the `dispute_id` — the server initializes all status fields to `pending`, both deadlines to `null`, `deadline_extended` to `false`, and `user_written_notice` to `null`. Returns 409 if the `dispute_id` already exists.
@@ -303,23 +315,67 @@ For deployment to a Kubernetes cluster, replace `localhost:8888` with the in-clu
 ```
 disputeos-mock-api/
 ├── main.py              # FastAPI app — state endpoints + mock data sources
-├── store.py             # JSON-file-backed dispute state store
-├── models.py            # Pydantic request/response models + initial state
+├── store.py             # SQLAlchemy-backed dispute state store
+├── db.py                # SQLAlchemy engine + session factory
+├── models.py            # Pydantic models + SQLAlchemy ORM + enums
 ├── generators.py        # Deterministic synthetic data generators (hash-seeded)
-├── requirements.txt     # fastapi + uvicorn
-├── Dockerfile           # Container image
+├── smoke.py             # End-to-end smoke check for the DisputeStore
+├── alembic.ini          # Alembic config (URL resolved from env)
+├── alembic/             # Migration scripts
+│   ├── env.py
+│   ├── script.py.mako
+│   └── versions/
+│       └── 0001_initial.py
+├── requirements.txt     # fastapi, uvicorn, sqlalchemy, psycopg, alembic, dotenv
+├── Dockerfile           # Container image (runs alembic upgrade on start)
 ├── docker-compose.yml   # One-command local startup
 ├── openapi.json         # OpenAPI 3.1 spec (auto-generated)
 ├── API_DOCS.md          # Full endpoint reference
+├── .env.example         # Template for local env vars
 ├── .gitignore
 └── README.md            # This file
 ```
 
-## ⚠️ Persistence Note (Render Free Tier)
+## Persistence
 
-The dispute state store uses a JSON file at `/tmp/disputeos_state.json` by default. On Render's free tier, the container's filesystem is **ephemeral** — when the container restarts (after ~15 min of inactivity or on a new deploy), the state is wiped.
+Dispute state lives in a Postgres database — Supabase is the default, but
+any Postgres reachable on a standard connection URL works. Two env vars
+control the wiring:
 
-For a POC this is acceptable since demos happen within a single session. For persistence across restarts, set `DISPUTE_STORE_PATH` to a Render persistent disk mount, or swap the `DisputeStore` class in `store.py` for a Postgres-backed implementation (Neon/Supabase free tier both work).
+| Var | Purpose |
+|---|---|
+| `DATABASE_URL` | Used by the running FastAPI app. Point at the Supabase **Supavisor pooler** (port 6543, transaction mode). |
+| `DIRECT_DATABASE_URL` | Used by Alembic only. Point at the **direct** Postgres endpoint (port 5432) — some DDL misbehaves under transaction-mode pooling. |
+
+Both URLs should use the `postgresql+psycopg://` scheme so SQLAlchemy picks
+the psycopg (v3) driver.
+
+### Running migrations
+
+```bash
+# Apply every migration (creates tables if empty)
+alembic upgrade head
+
+# Autogenerate a new migration from pending model changes
+alembic revision --autogenerate -m "add foo column"
+
+# Roll back the last migration
+alembic downgrade -1
+```
+
+> Autogenerate for **enum value** changes is imperfect — inspect any
+> generated migration that touches `sa.Enum(...)` before committing.
+
+### Verifying the store
+
+`smoke.py` exercises every `DisputeStore` method against the real DB and
+prints a pass/fail line per step:
+
+```bash
+python smoke.py
+```
+
+Exits non-zero if any step fails, so it's safe to wire into CI.
 
 ---
 

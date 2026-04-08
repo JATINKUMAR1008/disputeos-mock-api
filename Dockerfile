@@ -11,6 +11,16 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Render once when models.py and store.py were added in v2.0).
 COPY *.py ./
 
+# Alembic migration tree. Needed at container runtime because the entrypoint
+# runs `alembic upgrade head` before the API starts.
+COPY alembic.ini ./
+COPY alembic ./alembic
+
 EXPOSE 8888
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8888"]
+# Run migrations against the direct Postgres endpoint, then start the API.
+# `alembic upgrade head` reads DIRECT_DATABASE_URL from the container env;
+# `uvicorn` reads DATABASE_URL (the pooler URL). Fails fast if either the
+# migration or the app itself can't start, so container orchestrators
+# (Render, Fly, Railway, etc.) see the failure clearly.
+CMD ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8888"]
