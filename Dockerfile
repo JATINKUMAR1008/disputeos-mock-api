@@ -6,8 +6,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY main.py generators.py ./
+# Copy application code — wildcard so we don't have to remember to update
+# this line every time a new module is added (this exact bug shipped to
+# Render once when models.py and store.py were added in v2.0).
+COPY *.py ./
 
 EXPOSE 8888
 
