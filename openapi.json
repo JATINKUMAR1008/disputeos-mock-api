@@ -1,0 +1,241 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "DisputeOS Mock API",
+    "description": "Mock data source endpoints for the DisputeOS workflow POC. Generates deterministic synthetic data from any ID — no storage required.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Root",
+        "description": "Service info and endpoint discovery.",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Health",
+        "description": "Liveness check.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mock/accounts/{account_id}": {
+      "get": {
+        "tags": [
+          "mock-data"
+        ],
+        "summary": "Get Account",
+        "description": "Get deterministic account details for any account_id.\n\nThe same account_id always returns the same data (hash-seeded).\nUsed by the workflow to determine `is_new_account` and `account_state`,\nwhich feed into `clock_variant` determination.\n\nExample:\n    GET /api/mock/accounts/ACC-884821",
+        "operationId": "get_account_api_mock_accounts__account_id__get",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mock/transactions/{complaint_id}": {
+      "get": {
+        "tags": [
+          "mock-data"
+        ],
+        "summary": "Get Transaction",
+        "description": "Get deterministic transaction details for any complaint_id.\n\nThe same complaint_id always returns the same transaction.\nUsed by the workflow to determine `is_pos_debit`, `is_out_of_state`,\n`card_present`, etc.\n\nIf `account_id` is provided, the merchant_state will be correlated\nagainst the account's state for accurate `is_out_of_state` computation.\n\nExample:\n    GET /api/mock/transactions/DSP-2026-04-07-0001\n    GET /api/mock/transactions/DSP-2026-04-07-0001?account_id=ACC-884821",
+        "operationId": "get_transaction_api_mock_transactions__complaint_id__get",
+        "parameters": [
+          {
+            "name": "complaint_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Complaint Id"
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional account_id for cross-state correlation",
+              "title": "Account Id"
+            },
+            "description": "Optional account_id for cross-state correlation"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mock/calendar/{year}": {
+      "get": {
+        "tags": [
+          "mock-data"
+        ],
+        "summary": "Get Calendar",
+        "description": "Get the Federal Reserve holiday calendar for a given year.\n\nUsed by the workflow's collation step to compute business day deadlines\ncorrectly (Reg E investigation deadlines are in business days, which skip\nweekends and federal holidays).\n\nCurrently only 2026 is supported.\n\nExample:\n    GET /api/mock/calendar/2026",
+        "operationId": "get_calendar_api_mock_calendar__year__get",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Year"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
