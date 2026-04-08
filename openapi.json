@@ -384,6 +384,17 @@
     },
     "components": {
         "schemas": {
+            "DisputeOverallStatus": {
+                "type": "string",
+                "enum": [
+                    "intake",
+                    "investigating",
+                    "blocked",
+                    "complete"
+                ],
+                "title": "DisputeOverallStatus",
+                "description": "Overall lifecycle status of a dispute, top-level `status` field."
+            },
             "DisputeState": {
                 "properties": {
                     "dispute_id": {
@@ -423,8 +434,8 @@
                         "default": false
                     },
                     "status": {
-                        "$ref": "#/components/schemas/DisputeStatus",
-                        "default": "pending"
+                        "$ref": "#/components/schemas/DisputeOverallStatus",
+                        "default": "intake"
                     },
                     "user_written_notice": {
                         "anyOf": [
@@ -547,7 +558,7 @@
                     "status": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/DisputeStatus"
+                                "$ref": "#/components/schemas/DisputeOverallStatus"
                             },
                             {
                                 "type": "null"
@@ -589,7 +600,7 @@
                     "completed"
                 ],
                 "title": "DisputeStatus",
-                "description": "Allowed values for any status field on a dispute."
+                "description": "Progress status used by the per-step status fields."
             },
             "HTTPValidationError": {
                 "properties": {

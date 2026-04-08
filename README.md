@@ -83,7 +83,7 @@ Initial state on creation:
   "investigation_deadline": null,
   "provisional_credit_status": "pending",
   "deadline_extended": false,
-  "status": "pending",
+  "status": "intake",
   "user_written_notice": null,
   "written_notice_deadline": null,
   "created_at": "2026-04-08T08:07:27.619337+00:00",
@@ -91,7 +91,11 @@ Initial state on creation:
 }
 ```
 
-**Status fields** (`investigation_status`, `gate_1_status`, `gate_2_status`, `provisional_credit_status`, `status`) accept exactly one of: `pending`, `started`, `completed`. Anything else returns 422.
+**Progress status fields** (`investigation_status`, `gate_1_status`, `gate_2_status`, `provisional_credit_status`) accept exactly one of: `pending`, `started`, `completed`.
+
+**Overall status field** (`status`) is the dispute's lifecycle stage and accepts exactly one of: `intake`, `investigating`, `blocked`, `complete`.
+
+Anything else returns 422 with the list of allowed values.
 
 #### `GET /api/disputes`
 List all disputes. Returns an array of full dispute records.
@@ -112,7 +116,7 @@ curl -X PATCH https://disputeos-mock-api.onrender.com/api/disputes/DSP-2026-04-0
     "user_written_notice": "Dear customer, your dispute is under review.",
     "written_notice_deadline": 7,
     "deadline_extended": true,
-    "status": "started"
+    "status": "investigating"
   }'
 ```
 
