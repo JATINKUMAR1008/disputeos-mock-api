@@ -78,24 +78,31 @@ Initial state on creation:
 {
   "dispute_id": "DSP-2026-04-08-0001",
   "investigation_status": "pending",
-  "gate_1_status": "pending",
-  "gate_2_status": "pending",
+  "gate_1_status": "on_track",
+  "gate_2_status": "on_track",
   "investigation_deadline": null,
-  "provisional_credit_status": "pending",
+  "provisional_credit_status": "not_transferred",
+  "provisional_credit_generated": false,
   "deadline_extended": false,
   "status": "intake",
   "user_written_notice": null,
   "written_notice_deadline": null,
+  "credit_revert_notice_deadline": null,
   "created_at": "2026-04-08T08:07:27.619337+00:00",
   "updated_at": "2026-04-08T08:07:27.619337+00:00"
 }
 ```
 
-**Progress status fields** (`investigation_status`, `gate_1_status`, `gate_2_status`, `provisional_credit_status`) accept exactly one of: `pending`, `started`, `completed`.
+Each status field has its own enum — they are not interchangeable:
 
-**Overall status field** (`status`) is the dispute's lifecycle stage and accepts exactly one of: `intake`, `investigating`, `blocked`, `complete`.
+| Field | Allowed values |
+|---|---|
+| `investigation_status` | `pending`, `started`, `completed` |
+| `gate_1_status`, `gate_2_status` | `overdue`, `on_track`, `completed` |
+| `provisional_credit_status` | `not_transferred`, `transferred`, `revert` |
+| `status` (overall lifecycle) | `intake`, `investigating`, `blocked`, `complete`, `at_risk` |
 
-Anything else returns 422 with the list of allowed values.
+Anything else returns 422 with the list of allowed values for the offending field.
 
 #### `GET /api/disputes`
 List all disputes. Returns an array of full dispute records.
@@ -113,8 +120,10 @@ curl -X PATCH https://disputeos-mock-api.onrender.com/api/disputes/DSP-2026-04-0
     "investigation_status": "started",
     "investigation_deadline": 10,
     "gate_1_status": "completed",
+    "provisional_credit_status": "transferred",
     "user_written_notice": "Dear customer, your dispute is under review.",
     "written_notice_deadline": 7,
+    "credit_revert_notice_deadline": 14,
     "deadline_extended": true,
     "status": "investigating"
   }'

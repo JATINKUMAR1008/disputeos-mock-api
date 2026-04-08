@@ -390,7 +390,8 @@
                     "intake",
                     "investigating",
                     "blocked",
-                    "complete"
+                    "complete",
+                    "at_risk"
                 ],
                 "title": "DisputeOverallStatus",
                 "description": "Overall lifecycle status of a dispute, top-level `status` field."
@@ -406,12 +407,12 @@
                         "default": "pending"
                     },
                     "gate_1_status": {
-                        "$ref": "#/components/schemas/DisputeStatus",
-                        "default": "pending"
+                        "$ref": "#/components/schemas/GateStatus",
+                        "default": "on_track"
                     },
                     "gate_2_status": {
-                        "$ref": "#/components/schemas/DisputeStatus",
-                        "default": "pending"
+                        "$ref": "#/components/schemas/GateStatus",
+                        "default": "on_track"
                     },
                     "investigation_deadline": {
                         "anyOf": [
@@ -425,8 +426,13 @@
                         "title": "Investigation Deadline"
                     },
                     "provisional_credit_status": {
-                        "$ref": "#/components/schemas/DisputeStatus",
-                        "default": "pending"
+                        "$ref": "#/components/schemas/ProvisionalCreditStatus",
+                        "default": "not_transferred"
+                    },
+                    "provisional_credit_generated": {
+                        "type": "boolean",
+                        "title": "Provisional Credit Generated",
+                        "default": false
                     },
                     "deadline_extended": {
                         "type": "boolean",
@@ -458,6 +464,17 @@
                             }
                         ],
                         "title": "Written Notice Deadline"
+                    },
+                    "credit_revert_notice_deadline": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Credit Revert Notice Deadline"
                     },
                     "created_at": {
                         "type": "string",
@@ -506,7 +523,7 @@
                     "gate_1_status": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/DisputeStatus"
+                                "$ref": "#/components/schemas/GateStatus"
                             },
                             {
                                 "type": "null"
@@ -516,7 +533,7 @@
                     "gate_2_status": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/DisputeStatus"
+                                "$ref": "#/components/schemas/GateStatus"
                             },
                             {
                                 "type": "null"
@@ -537,12 +554,23 @@
                     "provisional_credit_status": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/DisputeStatus"
+                                "$ref": "#/components/schemas/ProvisionalCreditStatus"
                             },
                             {
                                 "type": "null"
                             }
                         ]
+                    },
+                    "provisional_credit_generated": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Provisional Credit Generated"
                     },
                     "deadline_extended": {
                         "anyOf": [
@@ -586,6 +614,17 @@
                             }
                         ],
                         "title": "Written Notice Deadline"
+                    },
+                    "credit_revert_notice_deadline": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Credit Revert Notice Deadline"
                     }
                 },
                 "type": "object",
@@ -602,6 +641,16 @@
                 "title": "DisputeStatus",
                 "description": "Progress status used by the per-step status fields."
             },
+            "GateStatus": {
+                "type": "string",
+                "enum": [
+                    "overdue",
+                    "on_track",
+                    "completed"
+                ],
+                "title": "GateStatus",
+                "description": "Status for gate_1_status and gate_2_status fields."
+            },
             "HTTPValidationError": {
                 "properties": {
                     "detail": {
@@ -614,6 +663,16 @@
                 },
                 "type": "object",
                 "title": "HTTPValidationError"
+            },
+            "ProvisionalCreditStatus": {
+                "type": "string",
+                "enum": [
+                    "not_transferred",
+                    "transferred",
+                    "revert"
+                ],
+                "title": "ProvisionalCreditStatus",
+                "description": "Status for provisional_credit_status field."
             },
             "ValidationError": {
                 "properties": {
