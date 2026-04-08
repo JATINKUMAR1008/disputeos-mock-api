@@ -1,241 +1,642 @@
 {
-  "openapi": "3.1.0",
-  "info": {
-    "title": "DisputeOS Mock API",
-    "description": "Mock data source endpoints for the DisputeOS workflow POC. Generates deterministic synthetic data from any ID — no storage required.",
-    "version": "1.0.0"
-  },
-  "paths": {
-    "/": {
-      "get": {
-        "tags": [
-          "meta"
-        ],
-        "summary": "Root",
-        "description": "Service info and endpoint discovery.",
-        "operationId": "root__get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
+    "openapi": "3.1.0",
+    "info": {
+        "title": "DisputeOS API",
+        "description": "Dispute state tracking + mock data sources for the DisputeOS workflow POC. Stores dispute timeline state keyed by dispute_id, and provides deterministic mock data for account/transaction/calendar lookups used by the workflow's data_source_calls step.",
+        "version": "2.0.0"
     },
-    "/health": {
-      "get": {
-        "tags": [
-          "meta"
-        ],
-        "summary": "Health",
-        "description": "Liveness check.",
-        "operationId": "health_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/mock/accounts/{account_id}": {
-      "get": {
-        "tags": [
-          "mock-data"
-        ],
-        "summary": "Get Account",
-        "description": "Get deterministic account details for any account_id.\n\nThe same account_id always returns the same data (hash-seeded).\nUsed by the workflow to determine `is_new_account` and `account_state`,\nwhich feed into `clock_variant` determination.\n\nExample:\n    GET /api/mock/accounts/ACC-884821",
-        "operationId": "get_account_api_mock_accounts__account_id__get",
-        "parameters": [
-          {
-            "name": "account_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Account Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+    "paths": {
+        "/": {
+            "get": {
+                "tags": [
+                    "meta"
+                ],
+                "summary": "Root",
+                "description": "Service info and endpoint discovery.",
+                "operationId": "root__get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
                 }
-              }
             }
-          }
-        }
-      }
-    },
-    "/api/mock/transactions/{complaint_id}": {
-      "get": {
-        "tags": [
-          "mock-data"
-        ],
-        "summary": "Get Transaction",
-        "description": "Get deterministic transaction details for any complaint_id.\n\nThe same complaint_id always returns the same transaction.\nUsed by the workflow to determine `is_pos_debit`, `is_out_of_state`,\n`card_present`, etc.\n\nIf `account_id` is provided, the merchant_state will be correlated\nagainst the account's state for accurate `is_out_of_state` computation.\n\nExample:\n    GET /api/mock/transactions/DSP-2026-04-07-0001\n    GET /api/mock/transactions/DSP-2026-04-07-0001?account_id=ACC-884821",
-        "operationId": "get_transaction_api_mock_transactions__complaint_id__get",
-        "parameters": [
-          {
-            "name": "complaint_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Complaint Id"
-            }
-          },
-          {
-            "name": "account_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Optional account_id for cross-state correlation",
-              "title": "Account Id"
-            },
-            "description": "Optional account_id for cross-state correlation"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/mock/calendar/{year}": {
-      "get": {
-        "tags": [
-          "mock-data"
-        ],
-        "summary": "Get Calendar",
-        "description": "Get the Federal Reserve holiday calendar for a given year.\n\nUsed by the workflow's collation step to compute business day deadlines\ncorrectly (Reg E investigation deadlines are in business days, which skip\nweekends and federal holidays).\n\nCurrently only 2026 is supported.\n\nExample:\n    GET /api/mock/calendar/2026",
-        "operationId": "get_calendar_api_mock_calendar__year__get",
-        "parameters": [
-          {
-            "name": "year",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Year"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "components": {
-    "schemas": {
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "type": "array",
-            "title": "Detail"
-          }
         },
-        "type": "object",
-        "title": "HTTPValidationError"
-      },
-      "ValidationError": {
-        "properties": {
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
+        "/health": {
+            "get": {
+                "tags": [
+                    "meta"
+                ],
+                "summary": "Health",
+                "description": "Liveness check.",
+                "operationId": "health_health_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
                 }
-              ]
-            },
-            "type": "array",
-            "title": "Location"
-          },
-          "msg": {
-            "type": "string",
-            "title": "Message"
-          },
-          "type": {
-            "type": "string",
-            "title": "Error Type"
-          }
+            }
         },
-        "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError"
-      }
+        "/api/disputes": {
+            "get": {
+                "tags": [
+                    "dispute-state"
+                ],
+                "summary": "List all disputes",
+                "description": "Return all disputes in the store.\n\nNo filtering for now \u2014 callers can filter client-side. If we grow past\na few hundred disputes we'll add query params for status filtering.",
+                "operationId": "list_disputes_api_disputes_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/DisputeState"
+                                    },
+                                    "type": "array",
+                                    "title": "Response List Disputes Api Disputes Get"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "dispute-state"
+                ],
+                "summary": "Create a new dispute",
+                "description": "Create a new dispute with initial timeline state.\n\nThe server initializes all gate statuses and clock state to their\ndefault pending/not_started values. These fields are then updated\nby the workflow's agent_remediation step after each run.\n\nIf a dispute with this `dispute_id` already exists, returns 409.",
+                "operationId": "create_dispute_api_disputes_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DisputeStateCreate"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DisputeState"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/disputes/{dispute_id}": {
+            "get": {
+                "tags": [
+                    "dispute-state"
+                ],
+                "summary": "Get a dispute by ID",
+                "description": "Return the full state of a single dispute.\n\nCalled by the analyst view when rendering the detail page, and\noptionally by the workflow's data_source_calls step to read prior state.",
+                "operationId": "get_dispute_api_disputes__dispute_id__get",
+                "parameters": [
+                    {
+                        "name": "dispute_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Dispute Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DisputeState"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "dispute-state"
+                ],
+                "summary": "Update dispute state (partial)",
+                "description": "Shallow-merge a partial update into an existing dispute.\n\nCalled by the workflow's agent_remediation step after each run to\npersist the computed timeline state (gate statuses, clock state,\ndeadlines). Fields with value `null` in the patch body are NOT\napplied \u2014 they're treated as \"not set\" rather than \"set to null\".\n\nTo explicitly clear a field, send it with the string \"null\" and\nhandle it client-side.",
+                "operationId": "patch_dispute_api_disputes__dispute_id__patch",
+                "parameters": [
+                    {
+                        "name": "dispute_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Dispute Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DisputeStatePatch"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DisputeState"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "dispute-state"
+                ],
+                "summary": "Delete a dispute",
+                "description": "Remove a dispute from the store. 404 if not found.",
+                "operationId": "delete_dispute_api_disputes__dispute_id__delete",
+                "parameters": [
+                    {
+                        "name": "dispute_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Dispute Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/mock/accounts/{account_id}": {
+            "get": {
+                "tags": [
+                    "mock-data"
+                ],
+                "summary": "Get Account",
+                "description": "Get deterministic account details for any account_id.\n\nThe same account_id always returns the same data (hash-seeded).\nUsed by the workflow to determine `is_new_account` and `account_state`,\nwhich feed into `clock_variant` determination.\n\nExample:\n    GET /api/mock/accounts/ACC-884821",
+                "operationId": "get_account_api_mock_accounts__account_id__get",
+                "parameters": [
+                    {
+                        "name": "account_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Account Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/mock/transactions/{complaint_id}": {
+            "get": {
+                "tags": [
+                    "mock-data"
+                ],
+                "summary": "Get Transaction",
+                "description": "Get deterministic transaction details for any complaint_id.\n\nThe same complaint_id always returns the same transaction.\nUsed by the workflow to determine `is_pos_debit`, `is_out_of_state`,\n`card_present`, etc.\n\nIf `account_id` is provided, the merchant_state will be correlated\nagainst the account's state for accurate `is_out_of_state` computation.\n\nExample:\n    GET /api/mock/transactions/DSP-2026-04-07-0001\n    GET /api/mock/transactions/DSP-2026-04-07-0001?account_id=ACC-884821",
+                "operationId": "get_transaction_api_mock_transactions__complaint_id__get",
+                "parameters": [
+                    {
+                        "name": "complaint_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Complaint Id"
+                        }
+                    },
+                    {
+                        "name": "account_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Optional account_id for cross-state correlation",
+                            "title": "Account Id"
+                        },
+                        "description": "Optional account_id for cross-state correlation"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/mock/calendar/{year}": {
+            "get": {
+                "tags": [
+                    "mock-data"
+                ],
+                "summary": "Get Calendar",
+                "description": "Get the Federal Reserve holiday calendar for a given year.\n\nUsed by the workflow's collation step to compute business day deadlines\ncorrectly (Reg E investigation deadlines are in business days, which skip\nweekends and federal holidays).\n\nCurrently only 2026 is supported.\n\nExample:\n    GET /api/mock/calendar/2026",
+                "operationId": "get_calendar_api_mock_calendar__year__get",
+                "parameters": [
+                    {
+                        "name": "year",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Year"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "DisputeState": {
+                "properties": {
+                    "dispute_id": {
+                        "type": "string",
+                        "title": "Dispute Id"
+                    },
+                    "investigation_status": {
+                        "$ref": "#/components/schemas/DisputeStatus",
+                        "default": "pending"
+                    },
+                    "gate_1_status": {
+                        "$ref": "#/components/schemas/DisputeStatus",
+                        "default": "pending"
+                    },
+                    "gate_2_status": {
+                        "$ref": "#/components/schemas/DisputeStatus",
+                        "default": "pending"
+                    },
+                    "investigation_deadline": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Investigation Deadline"
+                    },
+                    "provisional_credit_status": {
+                        "$ref": "#/components/schemas/DisputeStatus",
+                        "default": "pending"
+                    },
+                    "deadline_extended": {
+                        "type": "boolean",
+                        "title": "Deadline Extended",
+                        "default": false
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/DisputeStatus",
+                        "default": "pending"
+                    },
+                    "user_written_notice": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "User Written Notice"
+                    },
+                    "written_notice_deadline": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Written Notice Deadline"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "title": "Updated At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "dispute_id",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "DisputeState",
+                "description": "Full dispute record returned by GET endpoints."
+            },
+            "DisputeStateCreate": {
+                "properties": {
+                    "dispute_id": {
+                        "type": "string",
+                        "title": "Dispute Id"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "dispute_id"
+                ],
+                "title": "DisputeStateCreate",
+                "description": "Body for POST /api/disputes \u2014 only the dispute_id is required."
+            },
+            "DisputeStatePatch": {
+                "properties": {
+                    "investigation_status": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DisputeStatus"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "gate_1_status": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DisputeStatus"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "gate_2_status": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DisputeStatus"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "investigation_deadline": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Investigation Deadline"
+                    },
+                    "provisional_credit_status": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DisputeStatus"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "deadline_extended": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deadline Extended"
+                    },
+                    "status": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DisputeStatus"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "user_written_notice": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "User Written Notice"
+                    },
+                    "written_notice_deadline": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Written Notice Deadline"
+                    }
+                },
+                "type": "object",
+                "title": "DisputeStatePatch",
+                "description": "Body for PATCH /api/disputes/{dispute_id} \u2014 every field optional.\n\nFields left unset (or sent as `null`) are NOT applied to the stored\nrecord; the patch endpoint filters them out before merging."
+            },
+            "DisputeStatus": {
+                "type": "string",
+                "enum": [
+                    "pending",
+                    "started",
+                    "completed"
+                ],
+                "title": "DisputeStatus",
+                "description": "Allowed values for any status field on a dispute."
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            }
+        }
     }
-  }
 }

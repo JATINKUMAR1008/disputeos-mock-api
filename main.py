@@ -191,8 +191,10 @@ async def patch_dispute(dispute_id: str, patch: DisputeStatePatch):
         )
 
     # exclude_none=True means callers don't have to worry about clobbering
-    # existing values with nulls when they only want to update a few fields
-    updates = patch.model_dump(exclude_none=True)
+    # existing values with nulls when they only want to update a few fields.
+    # mode="json" serializes DisputeStatus enum members as plain strings so
+    # the store's json.dump never sees enum instances.
+    updates = patch.model_dump(exclude_none=True, mode="json")
     updates["updated_at"] = utcnow_iso()
 
     result = store.update(dispute_id, updates)

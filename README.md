@@ -65,39 +65,33 @@ open http://localhost:8888/docs
 Stateful endpoints that store dispute records keyed by `dispute_id`. Data is persisted to a JSON file (`/tmp/disputeos_state.json` by default, override with `DISPUTE_STORE_PATH` env var).
 
 #### `POST /api/disputes`
-Create a new dispute with initial timeline state. The server initializes gate statuses, investigation status, and clock state to their default pending values. Returns 409 if the dispute_id already exists.
+Create a new dispute. The body is just the `dispute_id` — the server initializes all status fields to `pending`, both deadlines to `null`, `deadline_extended` to `false`, and `user_written_notice` to `null`. Returns 409 if the `dispute_id` already exists.
 
 ```bash
 curl -X POST https://disputeos-mock-api.onrender.com/api/disputes \
   -H "Content-Type: application/json" \
-  -d '{
-    "dispute_id": "DSP-2026-04-08-0001",
-    "account_id": "ACC-884821",
-    "consumer_name": "Maria Chen",
-    "intake_date": "2026-04-08",
-    "intake_channel": "web",
-    "dispute_type": "unauthorized",
-    "transaction_date": "2026-04-03",
-    "transaction_amount": 2340.00,
-    "transaction_type": "atm",
-    "merchant_name": "ATM #9284",
-    "consumer_narrative": "Someone used my card..."
-  }'
+  -d '{"dispute_id": "DSP-2026-04-08-0001"}'
 ```
 
 Initial state on creation:
 ```json
 {
-  "investigation_status": "not_started",
+  "dispute_id": "DSP-2026-04-08-0001",
+  "investigation_status": "pending",
   "gate_1_status": "pending",
   "gate_2_status": "pending",
-  "compliance_clock_state": "on_track",
-  "provisional_credit_issued": false,
-  "clock_variant": null,
   "investigation_deadline": null,
-  ...
+  "provisional_credit_status": "pending",
+  "deadline_extended": false,
+  "status": "pending",
+  "user_written_notice": null,
+  "written_notice_deadline": null,
+  "created_at": "2026-04-08T08:07:27.619337+00:00",
+  "updated_at": "2026-04-08T08:07:27.619337+00:00"
 }
 ```
+
+**Status fields** (`investigation_status`, `gate_1_status`, `gate_2_status`, `provisional_credit_status`, `status`) accept exactly one of: `pending`, `started`, `completed`. Anything else returns 422.
 
 #### `GET /api/disputes`
 List all disputes. Returns an array of full dispute records.
@@ -106,23 +100,23 @@ List all disputes. Returns an array of full dispute records.
 Return the full state of a single dispute. 404 if not found.
 
 #### `PATCH /api/disputes/{dispute_id}`
-Shallow-merge a partial update into an existing dispute. Called by the workflow's `agent_remediation` step after each run to persist the computed timeline state.
+Shallow-merge a partial update into an existing dispute. Send only the fields you want to change.
 
 ```bash
 curl -X PATCH https://disputeos-mock-api.onrender.com/api/disputes/DSP-2026-04-08-0001 \
   -H "Content-Type: application/json" \
   -d '{
-    "clock_variant": "standard_45",
-    "investigation_deadline": "2026-04-22",
-    "provisional_credit_deadline": "2026-04-22",
-    "extended_deadline": "2026-05-23",
-    "gate_1_status": "pending",
-    "compliance_clock_state": "on_track",
-    "last_run_id": "e80a12b3-cd7c-44a1-b3a9-574df52bba7d"
+    "investigation_status": "started",
+    "investigation_deadline": 10,
+    "gate_1_status": "completed",
+    "user_written_notice": "Dear customer, your dispute is under review.",
+    "written_notice_deadline": 7,
+    "deadline_extended": true,
+    "status": "started"
   }'
 ```
 
-Fields with value `null` are **not applied** (treated as "unset" rather than "set to null"). Only non-null fields are merged into the existing record.
+Fields with value `null` (or omitted) are **not applied** (treated as "unset" rather than "set to null"). Only non-null fields are merged into the existing record.
 
 #### `DELETE /api/disputes/{dispute_id}`
 Remove a dispute from the store. Returns 204 on success, 404 if not found.
